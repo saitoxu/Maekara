@@ -1,4 +1,4 @@
-package lab.ishida.maekara;
+package lab.ishida.maekara.facerecognition.model;
 
 /**
  * 文句を言っている人のDB
