@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lab.ishida.maekara.facerecognition.core.ResultRecognition.ResultType;
-import lab.ishida.maekara.facerecognition.model.ComplainantNameAndContents;
-import lab.ishida.maekara.facerecognition.model.CriminalNameAndContents;
+import lab.ishida.maekara.facerecognition.exception.DataBaseErrorException;
+import lab.ishida.maekara.facerecognition.model.CriminalAndComplainantDB;
 
 import org.json.JSONException;
 
@@ -16,19 +16,44 @@ import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 
 /**
- * 顔認識を行うクラス
+ * 顔認識を行うクラス.
+ * 
+ * 使い方<br>
+ * recognitionメソッドで画像を入れてやると、ResultRecognitionオブジェクトが帰ってきます. 
+ * このオブジェクトではいろいろな認識結果が入ってます.@see {@link ResultRecognition}
+ * 
+ * データベースにセットするときは各種setメソッドを使ってください.
+ * 
+ * 
+ * 名称は以下で統一してます.
+ * 
+ * complainant : 怒っている人.
+ * contents : 怒っている人の犯罪者に向けた告発文.
+ * criminal : 犯罪者.
+ * statements : 反省のための宣言文.
+ * 
+ * 
+ * 使う名前は以下になってます． @see {@link FaceRecognition#NAME_ARRAY}
+ * 
  * @author kingetsu
  *
  */
 public class FaceRecognition {
-	/** 犯罪者の名前リスト **/
-	List<CriminalNameAndContents> criminalList;
-	/** 告発者の名前リスト **/
-	List<ComplainantNameAndContents> complainantList;
+	/** データベースリスト **/
+	List<CriminalAndComplainantDB> db;
+
+	
+	// API キー
+	private final String API_KEY = "https://face.p.mashape.com/account/limits";
+	// API シークレット　キー
+	private final String API_SECRET = "79ead5bc5cb4452e9115a2dd65c10541";
+	// 学習済みの人たちの羅列
+	private final String NAME_ARRAY = "goto,saito,kingetsu";
+	// 名前空間
+	private final String MY_NAMESPACE = "maekara";
 	
 	public FaceRecognition() {
-		this.criminalList = new ArrayList<CriminalNameAndContents>();
-		this.complainantList = new ArrayList<ComplainantNameAndContents>();
+		this.db = new ArrayList<CriminalAndComplainantDB>();
 	}
 
 	/**
@@ -38,31 +63,28 @@ public class FaceRecognition {
 	 * @param contents 告発内容
 	 * @return 成功したらTrue
 	 */
-	public boolean setNameAndContents(String criminalName, String comploainantName, String contents){
+	public boolean setNameAndContents(String criminalName, String complainantName, String contents){
 
-		CriminalNameAndContents criminalDB  = new CriminalNameAndContents();
-		criminalDB.setContents(contents);
-		criminalDB.setName(criminalName);
+		CriminalAndComplainantDB obj = new CriminalAndComplainantDB();
+		obj.setCiminalName(criminalName);
+		obj.setComplainantName(complainantName);
+		obj.setContents(contents);
 		
-		ComplainantNameAndContents compDB = new ComplainantNameAndContents();
-		compDB.setName(comploainantName);
-
-		criminalList.add(criminalDB);
-		complainantList.add(compDB);
+		db.add(obj);
 
 		return true;
 	}
 
 	/**
 	 * 告発文を聞いた犯罪者が喋った反省文の内容をセットする
-	 * @param name 犯罪者の名前
+	 * @param criminalName 犯罪者の名前
 	 * @param statement 犯罪者がつぶやいた反省文の内容
 	 * @return 犯罪者の名前が見つかればDBにセットしてTrue，見つからなければFalse
 	 */
-	public boolean setComplaint(String name, String statements){
+	public boolean setComplaintAndStatements(String criminalName, String statements){
 
-		for (ComplainantNameAndContents comp : complainantList) {
-			if(comp.getName().equals(name)){
+		for (CriminalAndComplainantDB comp : this.db) {
+			if(comp.getCiminalName().equals(criminalName)){
 				comp.setStatemenets(statements);
 				return true;
 			}
@@ -74,14 +96,17 @@ public class FaceRecognition {
 	 * 認識器にかけてその顔写真の主が誰かを判定する.
 	 * 犯罪者なら犯罪者にするべきお告げの内容を，告発者なら告発する内容を{@link ResultRecognition}オブジェクトで
 	 * まとめて返す.
-	 * @param imageFile 認識したい画像ファイル
+	 * @param imageFile 認識したい画像ファイル、最大縦横1024ピクセルまで
 	 * @return ResultType ResultType列挙型を返す
 	 * @throws UnirestException 画像認識APIが使えなかったときにエラー
 	 * @throws JSONException JSONのパースエラー
 	 * @return ResultRecognitionクラスのオブジェクト
+	 * @throws DataBaseErrorException データベースに不整合性があった場合のエラー
+	 * @throws UnirestException API接続エラー
+	 * @throws JSONException JSONのパースに失敗時のエラー
 	 * @see ResultRecognition
 	 */
-	public ResultRecognition recognition(File imageFile)throws UnirestException, JSONException{
+	public ResultRecognition recognition(File imageFile)throws UnirestException, JSONException, DataBaseErrorException{
 		
 //			faces/detect – detects faces in specified images, returns face tags (every tag has unique tag id - tid).
 //			tags/save – saves specified face tags (by tid) with user specified user id(eg. mark@docs, where docs - data namespace name).
@@ -89,54 +114,64 @@ public class FaceRecognition {
 			
 		String status; // 成功かどうか
 		String tag; // 認識結果
+		String strings; // 告発文や反省文
 		int confidence; // 信頼率
 		ResultRecognition result = null; // returnされるオブジェクト
 		ResultType recognitionResultType = null;
 			
-		HttpResponse<JsonNode> request = Unirest.post("https://face.p.mashape.com/faces/recognize?api_key=%3Capi_key%3E&api_secret=%3Capi_secret%3E")
+		HttpResponse<JsonNode> request = Unirest.post("https://face.p.mashape.com/faces/recognize")
 					  .header("X-Mashape-Authorization", "tHSQ0Z9Up4GkUxysekx5SNRHEgFobE8n")
-					  .field("uids", "all")
-					  .field("namespace", "MyNamespace")
-					  .field("detector", "Aggressive")
-					  .field("attributes", "all")
-					  .field("files", new File("<file goes here>"))
+					  .field("api_key", API_KEY)
+				      .field("api_secret", API_SECRET)
+					  .field("uids", NAME_ARRAY)
+					  .field("namespace", MY_NAMESPACE)
+					  .field("files", imageFile)
 					  .field("limit", "1")
 					  .asJson();
 		// status 成功ならsuccess エラーならfailureがかえってくる
 		status = request.getBody().getObject().getString("status");
 		if (status.equals("success")){
-			tag = request.getBody().getObject().getJSONObject("tags").getJSONObject("uids").getString("uid");
-			// tag は name@namespace の形でAPIから返されるので編集する
-			
-			
-			
-			confidence = Integer.parseInt(request.getBody().getObject().getJSONObject("tags").getJSONObject("uids").getString("confidence"));
-
-			// tagから@の前を切り取る処理
-			
-			// 名前に関してデータベースから犯罪者か告発者かを探す
-			
-			// 画像が犯罪者なら犯罪者にあてた告発文をつけて返す
-			
-			// 画像が告発者なら犯罪者からの反省文をつけて返す
-				// 反省文が既にセットされている場合
-			
-				// ない場合
-			
-			
-			// resultに返答をする
-			result = new ResultRecognition(recognitionResultType, confidence, "");
-			
+			// tagは認識者の名前
+			try{
+				tag = request.getBody().getObject().getJSONObject("tags").getJSONObject("uids").getString("uid");
+				// tag は name@namespace の形でAPIから返されるのでnameの部分だけ取り出す
+				tag = tag.substring(0,tag.indexOf("@"));
+				
+				// 信頼性も取り出せる
+				confidence = Integer.parseInt(request.getBody().getObject().getJSONObject("tags").getJSONObject("uids").getString("confidence"));
+	
+				String str = "";
+				// 探し出した名前に関してデータベースから犯罪者か告発者かを探す
+				if (isComplainantExist(tag)){
+					String tmp = findStatements(tag);
+					if(tmp  != "") {
+						strings = "";
+						recognitionResultType = ResultType.COMP_WITH_NO_STATEMENT;
+					}else{
+						strings = tmp;
+						recognitionResultType = ResultType.COMP_WITH_STATEMENT;
+					}
+				}else if(isCriminalExist(tag)){
+					String tmp = findContents(tag);
+					if(tmp  != "") {
+						throw new DataBaseErrorException("犯罪者への告発文が登録されていません");
+					}else{
+						strings = tmp;
+						recognitionResultType = ResultType.COMP_WITH_STATEMENT;
+					}
+					// resultに返答をする
+					result = new ResultRecognition(recognitionResultType, confidence, str, tag);
+				}
+			}catch(JSONException e){
+				// 	認識結果として誰も帰ってこなかった場合
+				result = new ResultRecognition(ResultType.NONE, 0, "");
+			}
 			
 		}else{
-			
+			throw new DataBaseErrorException("APIの問題で認識結果が取り出せません");
 		}
 		
 		return result;
-		
-		// getbody
-		//System.out.println(response.getBody().getJSONObject(0).getString("condition"));
-		
 	}
 	
 	/**
@@ -145,18 +180,38 @@ public class FaceRecognition {
 	 * @return 反省文内容.ないなら空文字列
 	 */
 	private String findStatements(String criminal){
-		// TODO implementation
+		for (CriminalAndComplainantDB e : this.db) {
+			if(e.getCiminalName().equals(criminal)) return e.getStatemenets();
+		}
 		return "";
 	}
 	
 	/**
 	 * 犯罪者へ向けた告発文が登録されているかを探す.
 	 * @param complainant 告発者の名前
-	 * @return 反省文内容.ないなら空文字列
+	 * @return 告発文内容.ないなら空文字列
 	 */
 	private String findContents(String complainant){
-		// TODO implementation
+		for (CriminalAndComplainantDB e : this.db) {
+			if(e.getComplainantName().equals(complainant)) return e.getContents();
+		}
 		return "";
+	}
+	
+	/** 犯罪者リストに登録されているかを調べる */
+	private boolean isCriminalExist(String criminal){
+		for (CriminalAndComplainantDB e : this.db) {
+			if(e.getCiminalName().equals(criminal)) return true;
+		}
+		return false;
+	}
+	
+	/** 告発者リストに登録されているかを調べる */
+	private boolean isComplainantExist(String complainant){
+		for (CriminalAndComplainantDB e : this.db) {
+			if(e.getComplainantName().equals(complainant)) return true;
+		}
+		return false;
 	}
 		
 		

@@ -1,10 +1,6 @@
 package lab.ishida.maekara.facerecognition.core;
 
-import java.io.File;
-
-import lab.ishida.maekara.facerecognition.model.ComplainantNameAndContents;
-
-
+import lab.ishida.maekara.facerecognition.exception.DataBaseErrorException;
 
 
 /**
@@ -23,6 +19,7 @@ public class ResultRecognition {
 	private String statements = null; // 反省文
 	private ResultType recognitionResultType = null; // 認識結果
 	private int confidence = 0;
+	private String name; // 認識した人の名前
 	
 	public enum ResultType{
 		/** 犯罪者の顔 */
@@ -42,26 +39,26 @@ public class ResultRecognition {
 	 * @param recognitionResult
 	 * @param confidence
 	 * @param str 反省文か告発文
+	 * @throws DataBaseErrorException データが多すぎて整合性が取れない場合
 	 */
-	public ResultRecognition(ResultType recognitionResultType, int confidence, String str) {
+	public ResultRecognition(ResultType recognitionResultType, int confidence, String str, String name) throws DataBaseErrorException {
 		
+		this.name = name;
 		this.recognitionResultType = recognitionResultType;
 		
 		switch (recognitionResultType) {
 			case CRIMINAL:
 				this.confidence = confidence;
+				this.contents = str;
 				break;
 				
 			case COMP_WITH_STATEMENT:
 				this.confidence = confidence;
+				this.statements = str;
 				break;
-	
-			case COMP_WITH_NO_STATEMENT:
-				this.confidence = confidence;
-				break;
-				
+		
 			default:
-				break;
+				throw new DataBaseErrorException("データ過多");
 		}
 	}
 	
@@ -69,27 +66,24 @@ public class ResultRecognition {
 	 * コンストラクタ
 	 * @param recognitionResult
 	 * @param confidence
-	 * @param str 反省文か告発文
+	 * @throws DataBaseErrorException データベースのデータが足りてない時のエラー
 	 */
-	public ResultRecognition(ResultType recognitionResultType, int confidence) {
-		
+	public ResultRecognition(ResultType recognitionResultType, int confidence, String name) throws DataBaseErrorException {
+		this.name = name;
 		this.recognitionResultType = recognitionResultType;
 		
 		switch (recognitionResultType) {
-			case CRIMINAL:
-				this.confidence = confidence;
-				break;
-				
-			case COMP_WITH_STATEMENT:
+			case COMP_WITH_NO_STATEMENT:
 				this.confidence = confidence;
 				break;
 	
-			case COMP_WITH_NO_STATEMENT:
+			case NONE:
+				this.name = "";
 				this.confidence = confidence;
 				break;
 				
 			default:
-				break;
+				throw new DataBaseErrorException("データ欠損");
 		}
 	}
 	
@@ -99,7 +93,6 @@ public class ResultRecognition {
 	 */
 	public String getContents(){
 		return this.contents;
-		
 	}
 	
 	/**
@@ -108,7 +101,6 @@ public class ResultRecognition {
 	 */
 	public ResultType getRecognitionResult(){
 		return this.recognitionResultType;
-		
 	}
 	
 	/**
@@ -117,6 +109,18 @@ public class ResultRecognition {
 	 */
 	public String getStatements(){
 		return this.statements;
+	}
+
+	public int getConfidence() {
+		return confidence;
+	}
+
+	/**
+	 * 認識された名前について取得する
+	 * @return 名前
+	 */
+	public String getName() {
+		return name;
 	}
 
 }
