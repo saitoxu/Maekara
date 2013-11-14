@@ -112,12 +112,12 @@ public class FaceRecognition {
 //			tags/save – saves specified face tags (by tid) with user specified user id(eg. mark@docs, where docs - data namespace name).
 //			faces/train – checks changes for specified user ids (eg. new tags were added using tags/save or removed using tags/remove) and either creates/updates/removes face template for specified user id from data namespace.
 			
-		String status; // 成功かどうか
-		String tag; // 認識結果
-		String strings; // 告発文や反省文
-		int confidence; // 信頼率
-		ResultRecognition result = null; // returnされるオブジェクト
+		String status = ""; // 成功かどうか
+		String tag = ""; // 認識結果
+		String str = "";
+		int confidence = 0; // 信頼率
 		ResultType recognitionResultType = null;
+		ResultRecognition result = null; // returnされるオブジェクト
 			
 		HttpResponse<JsonNode> request = Unirest.post("https://face.p.mashape.com/faces/recognize")
 					  .header("X-Mashape-Authorization", "tHSQ0Z9Up4GkUxysekx5SNRHEgFobE8n")
@@ -140,23 +140,19 @@ public class FaceRecognition {
 				// 信頼性も取り出せる
 				confidence = Integer.parseInt(request.getBody().getObject().getJSONObject("tags").getJSONObject("uids").getString("confidence"));
 	
-				String str = "";
 				// 探し出した名前に関してデータベースから犯罪者か告発者かを探す
 				if (isComplainantExist(tag)){
-					String tmp = findStatements(tag);
-					if(tmp  != "") {
-						strings = "";
+					str = findStatements(tag);
+					if(str == "") {
 						recognitionResultType = ResultType.COMP_WITH_NO_STATEMENT;
 					}else{
-						strings = tmp;
 						recognitionResultType = ResultType.COMP_WITH_STATEMENT;
 					}
 				}else if(isCriminalExist(tag)){
-					String tmp = findContents(tag);
-					if(tmp  != "") {
+					str = findContents(tag);
+					if(str == "") {
 						throw new DataBaseErrorException("犯罪者への告発文が登録されていません");
 					}else{
-						strings = tmp;
 						recognitionResultType = ResultType.COMP_WITH_STATEMENT;
 					}
 					// resultに返答をする
