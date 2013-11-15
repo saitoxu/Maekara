@@ -1,5 +1,6 @@
 package lab.ishida.maekara;
 
+import java.io.File;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -22,23 +23,35 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
-	private static final int REQUEST_CODE = 1;
+public class MainActivity extends Activity implements TextToSpeech.OnInitListener {
+	private static final int SPEECH_RECOGNITION_CODE = 1;
+	private static final int CAMERA_CODE = 1;
+	
 	private static final String SEARCH_ACTION = "lab.ishida.maekara.SEARCH";
 	private static final String APP_ID = "dj0zaiZpPUZHcnNZSUdGZHZwSCZzPWNvbnN1bWVyc2VjcmV0Jng9ZjE-";
 
 	private TextView result;
 	private FaceRecognition fRecognition;
+	// 音声合成用
+    TextToSpeech tts = null;
+    // 画像認識用
+    FaceRecognition face = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		
+		
+		tts = new TextToSpeech(this,this);
+		face = new FaceRecognition();
+		
 		setContentView(R.layout.activity_main);
 		// テスト用のtextView
 		result = (TextView) findViewById(R.id.textView1);
@@ -58,11 +71,11 @@ public class MainActivity extends Activity {
 							"RequestRecognition");
 
 					// インテント発行
-					startActivityForResult(intent, REQUEST_CODE);
+					startActivityForResult(intent, SPEECH_RECOGNITION_CODE);
 				} catch (ActivityNotFoundException e) {
 					// このインテントに応答できるアクティビティがインストールされていない場合
 					Toast.makeText(MainActivity.this,
-							"ActivityNotFoundException", Toast.LENGTH_LONG)
+							"ActivityNotFoundException There is no recognizer", Toast.LENGTH_LONG)
 							.show();
 				}
 			}
@@ -82,10 +95,12 @@ public class MainActivity extends Activity {
 					startActivity(intent);
 				} catch (ActivityNotFoundException e) {
 					// このインテントに応答できるアクティビティがインストールされていない場合
-					Toast.makeText(MainActivity.this,
-							"ActivityNotFoundException", Toast.LENGTH_LONG)
-							.show();
+//					Toast.makeText(MainActivity.this,
+//							"ActivityNotFoundException There is no camera", Toast.LENGTH_LONG)
+//							.show();
+					e.printStackTrace();
 				}
+				
 			}
 		});
 	}
@@ -93,7 +108,7 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// 自分が投げたインテントであれば応答する
-		if (requestCode == REQUEST_CODE && resultCode == RESULT_OK) {
+		if (requestCode == SPEECH_RECOGNITION_CODE && resultCode == RESULT_OK) {
 			// 結果文字列リスト
 			ArrayList<String> results = data
 					.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
@@ -120,6 +135,8 @@ public class MainActivity extends Activity {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+		}else if (requestCode == CAMERA_CODE){
+			
 		}
 
 		super.onActivityResult(requestCode, resultCode, data);
@@ -156,7 +173,6 @@ public class MainActivity extends Activity {
 				Log.d("CONTENT", complaint.content);
 
 				// DBに告発者の名前、犯罪者の名前、内容を保存
-				fRecognition = new FaceRecognition();
 				fRecognition.setNameAndContents(complaint.criminal,
 						complaint.complainant, complaint.content);
 			} catch (Exception e) {
@@ -164,4 +180,23 @@ public class MainActivity extends Activity {
 			}
 		}
 	};
+
+	/**
+	 * 音声認識の初期設定用メソッド
+	 */
+	@Override
+	public void onInit(int status) {
+        if(status == TextToSpeech.SUCCESS) {
+            // 音声合成の設定を行う
+
+            float pitch = 1.0f; // 音の高低
+            float rate = 1.0f; // 話すスピード
+//            Locale locale = Locale.US; // 対象言語のロケール
+                // ※ロケールの一覧表
+                //   http://docs.oracle.com/javase/jp/1.5.0/api/java/util/Locale.html
+
+            tts.setPitch(pitch);
+            tts.setSpeechRate(rate);
+        }
+	}
 }

@@ -59,7 +59,7 @@ public class FaceRecognition {
 	/**
 	 * 告発者からの告発文の内容をデータベースに記録する
 	 * @param criminalName 犯罪者の名前
-	 * @param comploainantName 告発者の名前
+	 * @param complainantName 告発者の名前
 	 * @param contents 告発内容
 	 * @return 成功したらTrue
 	 */
@@ -78,7 +78,7 @@ public class FaceRecognition {
 	/**
 	 * 告発文を聞いた犯罪者が喋った反省文の内容をセットする
 	 * @param criminalName 犯罪者の名前
-	 * @param statement 犯罪者がつぶやいた反省文の内容
+	 * @param statements 犯罪者がつぶやいた反省文の内容
 	 * @return 犯罪者の名前が見つかればDBにセットしてTrue，見つからなければFalse
 	 */
 	public boolean setComplaintAndStatements(String criminalName, String statements){
