@@ -4,11 +4,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import lab.ishida.maekara.facerecognition.core.ResultRecognition.ResultType;
 import lab.ishida.maekara.facerecognition.exception.DataBaseErrorException;
 import lab.ishida.maekara.facerecognition.model.CriminalAndComplainantDB;
 
 import org.json.JSONException;
+
+import android.util.Log;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
@@ -48,12 +49,14 @@ public class FaceRecognition {
 	// API シークレット　キー
 	private final String API_SECRET = "79ead5bc5cb4452e9115a2dd65c10541";
 	// 学習済みの人たちの羅列
-	private final String NAME_ARRAY = "goto,saito,kingetsu";
+	private final String NAME_ARRAY = "saito,kingetsu";
 	// 名前空間
 	private final String MY_NAMESPACE = "maekara";
 	
 	public FaceRecognition() {
 		this.db = new ArrayList<CriminalAndComplainantDB>();
+		Log.d("PASS", "create FaceRecogniton Object");
+		
 	}
 
 	/**
@@ -105,6 +108,7 @@ public class FaceRecognition {
 	 * @throws UnirestException API接続エラー
 	 * @throws JSONException JSONのパースに失敗時のエラー
 	 * @see ResultRecognition
+	 * @deprecated このメソッドは使わないでください（笑）
 	 */
 	public ResultRecognition recognition(File imageFile)throws UnirestException, JSONException, DataBaseErrorException{
 		
@@ -118,7 +122,8 @@ public class FaceRecognition {
 		int confidence = 0; // 信頼率
 		ResultType recognitionResultType = null;
 		ResultRecognition result = null; // returnされるオブジェクト
-			
+		Log.d("PASS", "pass recog");
+		
 		HttpResponse<JsonNode> request = Unirest.post("https://face.p.mashape.com/faces/recognize")
 					  .header("X-Mashape-Authorization", "tHSQ0Z9Up4GkUxysekx5SNRHEgFobE8n")
 					  .field("api_key", API_KEY)
@@ -128,8 +133,12 @@ public class FaceRecognition {
 					  .field("files", imageFile)
 					  .field("limit", "1")
 					  .asJson();
+		
+		Log.d("PASS", "pass recog");
+		
 		// status 成功ならsuccess エラーならfailureがかえってくる
 		status = request.getBody().getObject().getString("status");
+		Log.d("status", status);
 		if (status.equals("success")){
 			// tagは認識者の名前
 			try{
@@ -175,7 +184,7 @@ public class FaceRecognition {
 	 * @param criminal 犯罪者の名前
 	 * @return 反省文内容.ないなら空文字列
 	 */
-	private String findStatements(String criminal){
+	public String findStatements(String criminal){
 		for (CriminalAndComplainantDB e : this.db) {
 			if(e.getCiminalName().equals(criminal)) return e.getStatemenets();
 		}
@@ -187,7 +196,7 @@ public class FaceRecognition {
 	 * @param complainant 告発者の名前
 	 * @return 告発文内容.ないなら空文字列
 	 */
-	private String findContents(String complainant){
+	public String findContents(String complainant){
 		for (CriminalAndComplainantDB e : this.db) {
 			if(e.getComplainantName().equals(complainant)) return e.getContents();
 		}
@@ -195,7 +204,7 @@ public class FaceRecognition {
 	}
 	
 	/** 犯罪者リストに登録されているかを調べる */
-	private boolean isCriminalExist(String criminal){
+	public boolean isCriminalExist(String criminal){
 		for (CriminalAndComplainantDB e : this.db) {
 			if(e.getCiminalName().equals(criminal)) return true;
 		}
@@ -203,7 +212,7 @@ public class FaceRecognition {
 	}
 	
 	/** 告発者リストに登録されているかを調べる */
-	private boolean isComplainantExist(String complainant){
+	public boolean isComplainantExist(String complainant){
 		for (CriminalAndComplainantDB e : this.db) {
 			if(e.getComplainantName().equals(complainant)) return true;
 		}

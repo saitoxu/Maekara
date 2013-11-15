@@ -20,20 +20,7 @@ public class ResultRecognition {
 	private ResultType recognitionResultType = null; // 認識結果
 	private int confidence = 0;
 	private String name; // 認識した人の名前
-	
-	public enum ResultType{
-		/** 犯罪者の顔 */
-		CRIMINAL,
-		/** 告発者の顔でその人にむけた反省文が帰ってきている状態 */
-		COMP_WITH_STATEMENT,
-		/** 告発者の顔だが、まだ犯罪者がその人にむけた反省文を述べていない状態 */
-		COMP_WITH_NO_STATEMENT,
-		/** だれでもない */
-		NONE,
-		/** その他の認識エラー **/
-		ERROR,
-	}
-	
+
 	/**
 	 * コンストラクタ
 	 * @param recognitionResult
