@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
 	private static final String APP_ID = "dj0zaiZpPUZHcnNZSUdGZHZwSCZzPWNvbnN1bWVyc2VjcmV0Jng9ZjE-";
 
 	private TextView result;
+	private FaceRecognition fRecognition;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -44,8 +45,6 @@ public class MainActivity extends Activity {
 
 		// このボタンを押すと音声入力開始
 		Button button1 = (Button) findViewById(R.id.button1);
-		// このボタンを押すと顔認識開始
-		Button button2 = (Button) findViewById(R.id.button2);
 		button1.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
@@ -60,6 +59,27 @@ public class MainActivity extends Activity {
 
 					// インテント発行
 					startActivityForResult(intent, REQUEST_CODE);
+				} catch (ActivityNotFoundException e) {
+					// このインテントに応答できるアクティビティがインストールされていない場合
+					Toast.makeText(MainActivity.this,
+							"ActivityNotFoundException", Toast.LENGTH_LONG)
+							.show();
+				}
+			}
+		});
+
+		// このボタンを押すと顔認識開始
+		Button button2 = (Button) findViewById(R.id.button2);
+		button2.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				try {
+					// インテント作成
+					Intent intent = new Intent();
+					intent.setClassName("lab.ishida.maekara", "lab.ishida.maekara.CameraActivity");
+
+					// インテント発行
+					startActivity(intent);
 				} catch (ActivityNotFoundException e) {
 					// このインテントに応答できるアクティビティがインストールされていない場合
 					Toast.makeText(MainActivity.this,
@@ -136,7 +156,7 @@ public class MainActivity extends Activity {
 				Log.d("CONTENT", complaint.content);
 
 				// DBに告発者の名前、犯罪者の名前、内容を保存
-				FaceRecognition fRecognition = new FaceRecognition();
+				fRecognition = new FaceRecognition();
 				fRecognition.setNameAndContents(complaint.criminal,
 						complaint.complainant, complaint.content);
 			} catch (Exception e) {
